@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29806.167
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "mqueue-bus", "mqueue-bus\mqueue-bus.csproj", "{8FB89880-90F0-4BF9-BE18-55D566FE3ADF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8FB89880-90F0-4BF9-BE18-55D566FE3ADF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FB89880-90F0-4BF9-BE18-55D566FE3ADF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FB89880-90F0-4BF9-BE18-55D566FE3ADF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FB89880-90F0-4BF9-BE18-55D566FE3ADF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2B5F6323-22A9-4114-B7E2-BE08906DBE0E}
+	EndGlobalSection
+EndGlobal
