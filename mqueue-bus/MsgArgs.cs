@@ -4,6 +4,11 @@ using System.Text;
 
 namespace mqueue_bus
 {
+    /// <summary>
+    /// Класс, который можно использовать как
+    /// сообщение по умолчанию
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class MsgArgs<T>
     {
         public T data = default(T);
