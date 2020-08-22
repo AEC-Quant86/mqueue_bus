@@ -32,9 +32,9 @@ namespace mqueue_bus
         /// определенного типа
         /// </summary>
         /// <param name="name"></param>
-        public static void createMsgQueue(string name)
+        public static void createMsgQueue(string name, queueType type = queueType.LOCAL)
         {
-            busDictionary.Add(name, new MsgQueueWorker<T>());
+            busDictionary.Add(name, new MsgQueueWorker<T>(name, type));
         }
     }
 }

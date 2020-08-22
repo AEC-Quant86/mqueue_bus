@@ -5,6 +5,12 @@ using System.Text;
 
 namespace mqueue_bus
 {
+    public enum queueType
+    {
+        LOCAL = 0,
+        SHARED,
+        BOTH
+    }
     public class MsgQueueWorker<T>
     {
         /// <summary>
@@ -12,12 +18,31 @@ namespace mqueue_bus
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
+        public string name;
+        private queueType type { get; }
         private Queue<T> msgQueue = new Queue<T>();
         private Thread worker;
         private Mutex sendMutex = new Mutex();
         private Mutex addMutex = new Mutex();
-        public MsgQueueWorker()
+        private delegate void Send(T msg);
+        private Send send;
+        public MsgQueueWorker(string name, queueType type = queueType.LOCAL)
         {
+            this.name = name;
+            this.type = type;
+            switch (type)
+            {
+                case queueType.LOCAL:
+                    send = localMsg;
+                    break;
+                case queueType.SHARED:
+                    send = sharedMsg;
+                    break;
+                case queueType.BOTH:
+                    send = localMsg;
+                    send += sharedMsg;
+                    break;
+            }
             worker = new Thread(new ThreadStart(doStuff));
             worker.IsBackground = true;
             worker.Start();
@@ -35,12 +60,16 @@ namespace mqueue_bus
                 else
                 {
                     sendMutex.WaitOne();
-                    Msg(msgQueue.Dequeue());
+                    send(msgQueue.Dequeue());
                     sendMutex.ReleaseMutex();
                 }
             }
         }
 
+
+        //send metods
+        private void localMsg(T msg) => Msg(msg);
+        private void sharedMsg(T msg) { }
 
         //Inputs
 
