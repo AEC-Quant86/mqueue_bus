@@ -2,15 +2,24 @@
 using System.Threading;
 using System.Collections.Generic;
 using System.Text;
+using System.IO;
+using System.IO.Pipes;
 
 namespace mqueue_bus
 {
+    //IPC enums -->
     public enum queueType
     {
         LOCAL = 0,
         SHARED,
         BOTH
     }
+    public enum queueDir
+    {
+        INPUT = 0,
+        OUTPUT
+    }
+    //<-- IPC enums
     public class MsgQueueWorker<T>
     {
         /// <summary>
@@ -18,18 +27,29 @@ namespace mqueue_bus
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public string name;
-        private queueType type { get; }
         private Queue<T> msgQueue = new Queue<T>();
         private Thread worker;
+        public string name;
         private Mutex sendMutex = new Mutex();
         private Mutex addMutex = new Mutex();
         private delegate void Send(T msg);
         private Send send;
-        public MsgQueueWorker(string name, queueType type = queueType.LOCAL)
+
+
+        //секция IPC -->
+        private Thread receiver;
+        private queueType type { get; }
+        private queueDir dir { get; }
+        private NamedPipeServerStream pipeServer;
+        private NamedPipeClientStream pipeClient;
+        //<--секция IPC
+
+
+        public MsgQueueWorker(string name, queueType type = queueType.LOCAL, queueDir dir = queueDir.OUTPUT)
         {
             this.name = name;
             this.type = type;
+            this.dir = dir;
             switch (type)
             {
                 case queueType.LOCAL:
@@ -43,9 +63,24 @@ namespace mqueue_bus
                     send += sharedMsg;
                     break;
             }
-            worker = new Thread(new ThreadStart(doStuff));
-            worker.IsBackground = true;
-            worker.Start();
+            if (dir == queueDir.OUTPUT)
+            {
+                if (type >= queueType.SHARED)
+                {
+                    pipeServer = new NamedPipeServerStream(name, PipeDirection.Out);
+                }
+                worker = new Thread(new ThreadStart(doStuff));
+                worker.IsBackground = true;
+                worker.Start();
+            }
+            if (type >= queueType.SHARED && dir == queueDir.INPUT)
+            {
+                pipeClient = new NamedPipeClientStream(".", name, PipeDirection.In);
+                pipeClient.Connect();
+                receiver = new Thread(new ThreadStart(IPC_Recriver));
+                receiver.IsBackground = true;
+                receiver.Start();
+            }
         }
 
         /// <summary>
@@ -55,7 +90,7 @@ namespace mqueue_bus
         {
             while (true)
             {
-                if (msgQueue.Count == 0 || Msg == null)
+                if (msgQueue.Count == 0 || send == null)
                     Thread.Sleep(10);
                 else
                 {
@@ -66,10 +101,35 @@ namespace mqueue_bus
             }
         }
 
+        private void IPC_Recriver()
+        {
+            while (true)
+            {
+
+            }
+        }
+
 
         //send metods
-        private void localMsg(T msg) => Msg(msg);
-        private void sharedMsg(T msg) { }
+        private void localMsg(T msg)
+        {
+            //задержка, пока в локальной очереди не появится хоть один приемник
+            while (Msg == null)
+                Thread.Sleep(10);
+            Msg(msg);
+        }
+        private void sharedMsg(T msg)
+        {
+            pipeServer.WaitForConnection();
+            try
+            {
+                using (StreamWriter sw = new StreamWriter(pipeServer))
+                {
+                    sw.AutoFlush = true;
+                    sw.WriteLine(msg.ToString());
+                }
+            catch { }
+        }
 
         //Inputs
 
@@ -100,7 +160,7 @@ namespace mqueue_bus
         }
 
         //Output
-        //Событие и его делегат
+        //Событие отправки локального собщения и его делегат
         public delegate void SendMsg(T msg);
         public event SendMsg Msg;
 
@@ -108,4 +168,6 @@ namespace mqueue_bus
         public delegate int BlockingMsg(T msg);
         public BlockingMsg blockingMsg { get; set; }
     }
+
 }
+
