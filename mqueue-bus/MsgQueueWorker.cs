@@ -105,7 +105,24 @@ namespace mqueue_bus
         {
             while (true)
             {
-
+                if (!(pipeClient.IsConnected && pipeClient.CanRead))
+                    Thread.Sleep(10);
+                else
+                {
+                    using (StreamReader input = new StreamReader(pipeClient))
+                    {
+                        // Display the read text to the console
+                        string temp;
+                        temp = input.ReadLine();
+                        //while ((temp = input.ReadLine()) != null)
+                        //{
+                            sendMutex.WaitOne();
+                        if (stringMsg != null)
+                            stringMsg(temp);
+                        sendMutex.ReleaseMutex();
+                        //}
+                    }
+                }
             }
         }
 
@@ -121,6 +138,8 @@ namespace mqueue_bus
         private void sharedMsg(T msg)
         {
             pipeServer.WaitForConnection();
+            if (!(pipeServer.IsConnected && pipeServer.CanWrite))
+                return;
             try
             {
                 using (StreamWriter sw = new StreamWriter(pipeServer))
@@ -128,6 +147,7 @@ namespace mqueue_bus
                     sw.AutoFlush = true;
                     sw.WriteLine(msg.ToString());
                 }
+            }
             catch { }
         }
 
@@ -163,6 +183,10 @@ namespace mqueue_bus
         //Событие отправки локального собщения и его делегат
         public delegate void SendMsg(T msg);
         public event SendMsg Msg;
+
+        //IPC событие приема (string)
+        public delegate void StringMsg(string msg);
+        public event StringMsg stringMsg;
 
         //делегат блокирующего сообщения
         public delegate int BlockingMsg(T msg);
