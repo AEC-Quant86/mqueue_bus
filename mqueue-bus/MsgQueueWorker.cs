@@ -40,8 +40,6 @@ namespace mqueue_bus
         private Thread receiver;
         private queueType type { get; }
         private queueDir dir { get; }
-        private NamedPipeServerStream pipeServer;
-        private NamedPipeClientStream pipeClient;
         //<--секция IPC
 
 
@@ -65,18 +63,12 @@ namespace mqueue_bus
             }
             if (dir == queueDir.OUTPUT)
             {
-                if (type >= queueType.SHARED)
-                {
-                    pipeServer = new NamedPipeServerStream(name, PipeDirection.Out);
-                }
                 worker = new Thread(new ThreadStart(doStuff));
                 worker.IsBackground = true;
                 worker.Start();
             }
             if (type >= queueType.SHARED && dir == queueDir.INPUT)
             {
-                pipeClient = new NamedPipeClientStream(".", name, PipeDirection.In);
-                pipeClient.Connect();
                 receiver = new Thread(new ThreadStart(IPC_Recriver));
                 receiver.IsBackground = true;
                 receiver.Start();
@@ -105,24 +97,24 @@ namespace mqueue_bus
         {
             while (true)
             {
-                if (!(pipeClient.IsConnected && pipeClient.CanRead))
-                    Thread.Sleep(10);
-                else
+
+                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", name, PipeDirection.In))
                 {
+                    pipeClient.Connect();
                     using (StreamReader input = new StreamReader(pipeClient))
                     {
                         // Display the read text to the console
                         string temp;
-                        temp = input.ReadLine();
-                        //while ((temp = input.ReadLine()) != null)
-                        //{
+                        while ((temp = input.ReadLine()) != null)
+                        {
                             sendMutex.WaitOne();
-                        if (stringMsg != null)
-                            stringMsg(temp);
-                        sendMutex.ReleaseMutex();
-                        //}
+                            if (stringMsg != null)
+                                stringMsg(temp);
+                            sendMutex.ReleaseMutex();
+                        }
                     }
                 }
+
             }
         }
 
@@ -137,18 +129,19 @@ namespace mqueue_bus
         }
         private void sharedMsg(T msg)
         {
-            pipeServer.WaitForConnection();
-            if (!(pipeServer.IsConnected && pipeServer.CanWrite))
-                return;
-            try
+            using (NamedPipeServerStream pipeServer = new NamedPipeServerStream(name, PipeDirection.Out))
             {
-                using (StreamWriter sw = new StreamWriter(pipeServer))
+                try
                 {
-                    sw.AutoFlush = true;
-                    sw.WriteLine(msg.ToString());
+                    pipeServer.WaitForConnection();
+                    using (StreamWriter sw = new StreamWriter(pipeServer))
+                    {
+                        sw.AutoFlush = true;
+                        sw.WriteLine(msg.ToString());
+                    }
                 }
+                catch { }
             }
-            catch { }
         }
 
         //Inputs
